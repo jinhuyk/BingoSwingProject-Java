@@ -1,0 +1,9 @@
+/**
+ * 
+ */
+/**
+ * @author ggmun
+ *
+ */
+module BINGO {
+}

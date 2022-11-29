@@ -18,6 +18,7 @@ public class Board {
 	
 	private final int N;
 	Word[][] board;
+
 	String username;
 	private List<Word> wordList;
 	
@@ -25,6 +26,7 @@ public class Board {
 		this.N = n;
 		this.username = username;
 		board = new Word[N][N];
+
 	}
 	
 	private void makeWordList(String fileName) {

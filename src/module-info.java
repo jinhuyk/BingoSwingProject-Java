@@ -6,4 +6,5 @@
  *
  */
 module BINGO {
+	requires java.desktop;
 }

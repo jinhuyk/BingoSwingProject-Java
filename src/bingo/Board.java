@@ -1,5 +1,5 @@
 /******************************************
-- written by Jinhuyk. Mun 11/20/2022
+- written by Jinhuyk. Mun 12/06/2022
 - JAVA programming Personal Project
 *******************************************/
 
@@ -21,12 +21,14 @@ public class Board {
 
 	String username;
 	private List<Word> wordList;
+	int wordN;
 	
 	public Board(String username, int n) {
 		this.N = n;
 		this.username = username;
 		board = new Word[N][N];
-
+		makeWordList("words.txt");
+		wordN = wordList.size();
 	}
 	
 	private void makeWordList(String fileName) {
@@ -43,8 +45,9 @@ public class Board {
 		}
 	}
 	
+	// 보드 생성 함수
 	public void generateBoard() {
-		makeWordList("words.txt");
+		
 		Collections.shuffle(wordList);
 		for(int i =0;i<N;i++) {
 			for(int j = 0;j<N;j++) {
@@ -52,25 +55,6 @@ public class Board {
 			}
 		}
 	}
-	
-	public void printBoard() {
-		String str= "{" + username+" board} \n";
-		for(int i =0;i<N;i++) {
-			for(int j = 0;j<N;j++) {
-				if(board[i][j].isChecked == true) {
-					str += "{★}  ";
-				}
-				else {
-					str +="["+ board[i][j].eng + "]  ";
-				}
-
-			}
-			str += "\n";
-		}
-		str += "--------------------------\n";
-		System.out.println(str);
-	}
-
 	public int getN() {
 		return N;
 	}

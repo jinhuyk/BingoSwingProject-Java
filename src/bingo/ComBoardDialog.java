@@ -63,3 +63,8 @@ public class ComBoardDialog extends JDialog {
 		});
 	}
 }
+
+/******************************************
+- written by Jinhuyk. Mun 12/06/2022
+- JAVA programming Personal Project
+*******************************************/

@@ -4,8 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.Scanner;
@@ -19,7 +17,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 @SuppressWarnings("serial")
-public class GameDialog extends JDialog implements ActionListener{
+public class GameDialog extends JDialog{
 	JPanel gamePanel;
 	JPanel boardPanel;
 	JPanel inputPanel;
@@ -28,10 +26,9 @@ public class GameDialog extends JDialog implements ActionListener{
 	JButton comBoardBtn;
 	
 	JTextField inputWordTxt;
-	JScrollPane logSPane;
+	JScrollPane logScrollPane;
 	
-	JTextArea logTarea;
-	String logStr = "";
+	JTextArea logTextArea;
 	
 	String result="";
 	ComBoardDialog dlg = null;
@@ -40,34 +37,32 @@ public class GameDialog extends JDialog implements ActionListener{
 	Board comBoard;
 	int boardSize;
 	
-	boolean comAi;
+	boolean nearBingoCom;
 	boolean isFinished=false;
 	
-	
-	int countUserBoardBingo;
-	int countComBoardBingo;
-	
 	double[] countArray = new double[3];
-
 	
-	Game gameLogic;
+	Game gameSystem;
 	
 	Container dialog = this.getContentPane();
-	public GameDialog(MainFrame parent, String title, boolean modal,boolean comAi) {
+	
+	public GameDialog(MainFrame parent, String title, boolean modal,boolean nearBingoCom) {
 		// TODO Auto-generated constructor stub
 		
 		super(parent,title,modal);
 		String score="";
+		
+		// 승률 계산을 위한 "score.txt"에 저장된 정보 불러오기
 		try(Scanner file = new Scanner(new File("score.txt"));) {
 			while(file.hasNextLine()) {
 				score = file.nextLine();
 			}
 			file.close();
         } catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} 
 		
+		//split을 이용하여 배열에 정보를 저장 후, double 타입으로 변환
 		String[] tempArray =score.split(" ");
 		for(int i =0;i<3;i++) {
 			if(tempArray[i]=="") {
@@ -80,7 +75,7 @@ public class GameDialog extends JDialog implements ActionListener{
 		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		this.setLocationRelativeTo(parent);
 		this.boardSize = parent.boardSize;
-		this.comAi = comAi;
+		this.nearBingoCom = nearBingoCom;
 		gameInit();
 		this.setVisible(true);
 	}
@@ -91,17 +86,24 @@ public class GameDialog extends JDialog implements ActionListener{
 		inputPanel = new JPanel(new BorderLayout());
 		comBoardBtn = new JButton("computer Board");
 		inputWordTxt = new JTextField(30);
-		logTarea = new JTextArea("GAMESTART\nPlease Write The Eng Word\n");
+		logTextArea = new JTextArea("GAMESTART\nPlease Write The Eng Word\n");
+		
 		double pRate = Math.round((countArray[1]/countArray[0])*100)/100.0;
 		double cRate = Math.round((countArray[2]/countArray[0])*100)/100.0;
-		String stt = "Player Win Rate : "+pRate+"\n";
-		stt += "Computer Win Rate : "+cRate+"\n";
-		addLog(stt);
+		
+		String rateStr = "Player Win Rate : "+pRate+"\n";
+		rateStr += "Computer Win Rate : "+cRate+"\n";
+		addLog(rateStr);
+		
+		// Random userBoard 생성, comBoard 생성
 		makeBoard();
-		gameLogic = new Game(userBoard,comBoard,this);
-		inputWordTxt.addActionListener(this);
+		
+		gameSystem = new Game(userBoard,comBoard,this);
+		
 		boardPanel.setLayout(new GridLayout(boardSize,boardSize));
         userBoardBtn = new JButton[boardSize][boardSize];
+        
+        //gridLayout을 이용하여 버튼에 해당 보드의 영문을 표기
         for(int i = 0;i<boardSize;i++) {
         	for(int j = 0;j<boardSize;j++) {
             	userBoardBtn[i][j] = new JButton();
@@ -110,22 +112,28 @@ public class GameDialog extends JDialog implements ActionListener{
             	boardPanel.add(userBoardBtn[i][j]);
             }
         }
+        
         addLog("==================================================\n");
-        logSPane = new JScrollPane(logTarea);
-        inputPanel.add(logSPane,BorderLayout.CENTER);
+        
+        logScrollPane = new JScrollPane(logTextArea);
+        inputPanel.add(logScrollPane,BorderLayout.CENTER);
         inputPanel.add(inputWordTxt,BorderLayout.SOUTH);
         inputPanel.add(comBoardBtn,BorderLayout.NORTH);
         dialog.add(gamePanel,BorderLayout.CENTER);
         gamePanel.add(boardPanel,BorderLayout.CENTER);
         gamePanel.add(inputPanel,BorderLayout.EAST);
         
-        
+        // comBoard를 볼수 있는 버튼 이벤트 구현
         comBoardBtn.addActionListener(e->{
 			new ComBoardDialog(GameDialog.this, "ComBoard",true);
-
+        });
+        // 텍스트창에 단어 입력 시 gameSystem 실행 ( 보드에 단어 여부 확인 알고리즘) 
+        inputWordTxt.addActionListener(e->{
+        	gameSysFunc();
         });
 	}	
-
+	
+	// 체크한 단어를 표시하기 위해 보드판을 새로고침 해주는 함수
 	private void refreshBoard() {
 		for(int i = 0;i<boardSize;i++) {
         	for(int j = 0;j<boardSize;j++) {
@@ -140,10 +148,10 @@ public class GameDialog extends JDialog implements ActionListener{
 	
 	
 	void addLog(String data) {
-		String temp = logTarea.getText();
-		logTarea.setText(temp+data);
+		String temp = logTextArea.getText();
+		logTextArea.setText(temp+data);
 	}
-//game source
+	// 보드 생성 함수 
 	private void makeBoard() {
 		this.comBoard = new Board("com",boardSize);
 		this.userBoard = new Board("user",boardSize);
@@ -151,79 +159,90 @@ public class GameDialog extends JDialog implements ActionListener{
 		this.comBoard.generateBoard();
 		this.userBoard.generateBoard();
 	}
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
-		if(e.getSource()==inputWordTxt) {
+	
+	// 게임 시스템 
+	private void gameSysFunc() {
+		String stt ="";
+		
+		
+		String engData = inputWordTxt.getText();
+		//단어 입력 후 보드에 단어가 존재하는지 확인 및, com의 빙고 단어 고르기 실행
+		gameSystem.selectWord(nearBingoCom, engData.trim());
+		
+		addLog("==================================================\n");
+		inputWordTxt.setText("");
+		
+		//보드 새로고침
+		refreshBoard();
+		
+		// 현재의 빙고 여부 확인
+		int countUserBoardBingo = gameSystem.isBingo(userBoard);
+		int countComBoardBingo = gameSystem.isBingo(comBoard);
+		
+		
+		//승패 확인
+		if(countUserBoardBingo>0 || countComBoardBingo>0) {
+			addLog("Player Bingo : "+ countUserBoardBingo+"\n");
+			addLog("Computer Bingo : "+ countComBoardBingo+"\n");
 			
+			//유저가 이기는 경우
+			if(countUserBoardBingo > countComBoardBingo) {
+				countArray[1]++;
+				countArray[0]++;
+				double pRate = Math.round((countArray[1]/countArray[0])*100)/100.0;
+				double cRate = Math.round((countArray[2]/countArray[0])*100)/100.0;
+				result = (countArray[0])+" "+(countArray[1])+" "+(countArray[2]);
+				stt += "Player Win Rate : "+pRate+"\n";
+				stt += "Computer Win Rate : "+cRate+"\n";
+				stt += "Player Bingo : "+ countUserBoardBingo+"\n";
+				stt += "Computer Bingo : "+ countComBoardBingo+"\n";
+				new ComBoardDialog(GameDialog.this, "ComBoard",false);
+				JOptionPane.showMessageDialog(null,stt + "★ Player가 이겼습니다.");
+				isFinished = true;
+				dispose();
+			}
 			
-			String stt ="";
+			//컴퓨터가 이기는 경우
+			else if(countUserBoardBingo < countComBoardBingo) {
+				countArray[0]++;
+				countArray[2]++;
+				double pRate = Math.round((countArray[1]/countArray[0])*100)/100.0;
+				double cRate = Math.round((countArray[2]/countArray[0])*100)/100.0;
+				result = (countArray[0])+" "+(countArray[1])+" "+(countArray[2]);
+				stt += "Player Win Rate : "+pRate+"\n";
+				stt += "Computer Win Rate : "+cRate+"\n";
+				stt += "Player Bingo : "+ countUserBoardBingo+"\n";
+				stt += "Computer Bingo : "+ countComBoardBingo+"\n";
+				new ComBoardDialog(GameDialog.this, "ComBoard",false);
+				JOptionPane.showMessageDialog(null, stt + "★ Computer가 이겼습니다.");
+				isFinished = true;
+				dispose();
+			}
 			
-			
-			String engData = inputWordTxt.getText();
-			gameLogic.selectWord(comAi, engData);
-			
-			addLog("==================================================\n");
-			inputWordTxt.setText("");
-			
-			refreshBoard();
-			countUserBoardBingo = gameLogic.isBingo(userBoard);
-			countComBoardBingo = gameLogic.isBingo(comBoard);
-			
-			if(countUserBoardBingo>0 || countComBoardBingo>0) {
-				addLog("Player Bingo : "+ countUserBoardBingo+"\n");
-				addLog("Computer Bingo : "+ countComBoardBingo+"\n");
-				if(countUserBoardBingo > countComBoardBingo) {
-					countArray[1]++;
-					countArray[0]++;
+			// 빙고 개수가 같은 경우
+			else if(countUserBoardBingo == countComBoardBingo) {
+				// 무승부 
+				if(gameSystem.isAllOpenBingo(this.comBoard) && gameSystem.isAllOpenBingo(this.userBoard)) {
+					countArray[0]++; countArray[2]++; countArray[1]++;
 					double pRate = Math.round((countArray[1]/countArray[0])*100)/100.0;
 					double cRate = Math.round((countArray[2]/countArray[0])*100)/100.0;
 					result = (countArray[0])+" "+(countArray[1])+" "+(countArray[2]);
-					stt += "Player Win Rate : "+pRate+"\n";
-					stt += "Computer Win Rate : "+cRate+"\n";
-					stt += "Player Bingo : "+ countUserBoardBingo+"\n";
-					stt += "Computer Bingo : "+ countComBoardBingo+"\n";
-					new ComBoardDialog(GameDialog.this, "ComBoard",false);
-					JOptionPane.showMessageDialog(null,stt + "★ Player가 이겼습니다.");
-					isFinished = true;
-					dispose();
-				}
-				else if(countUserBoardBingo < countComBoardBingo) {
-					countArray[0]++;
-					countArray[2]++;
-					double pRate = Math.round((countArray[1]/countArray[0])*100)/100.0;
-					double cRate = Math.round((countArray[2]/countArray[0])*100)/100.0;
-					result = (countArray[0])+" "+(countArray[1])+" "+(countArray[2]);
-					stt += "Player Win Rate : "+pRate+"\n";
-					stt += "Computer Win Rate : "+cRate+"\n";
-					stt += "Player Bingo : "+ countUserBoardBingo+"\n";
-					stt += "Computer Bingo : "+ countComBoardBingo+"\n";
-					new ComBoardDialog(GameDialog.this, "ComBoard",false);
-					JOptionPane.showMessageDialog(null, stt + "★ Computer가 이겼습니다.");
-					isFinished = true;
-					dispose();
-				}
-				else if(countUserBoardBingo == countComBoardBingo) {
-					
-					if(gameLogic.isAllOpenBingo(this.comBoard) && gameLogic.isAllOpenBingo(this.userBoard)) {
-						countArray[0]++;
-						double pRate = Math.round((countArray[1]/countArray[0])*100)/100.0;
-						double cRate = Math.round((countArray[2]/countArray[0])*100)/100.0;
-						result = (countArray[0])+" "+(countArray[1])+" "+(countArray[2]);
 
-						stt += "Player Win Rate : "+pRate+"\n";
-						stt += "Computer Win Rate : "+cRate+"\n";
-						stt += "Player Bingo : "+ countUserBoardBingo+"\n";
-						stt += "Computer Bingo : "+ countComBoardBingo+"\n";
-						new ComBoardDialog(GameDialog.this, "ComBoard",false);
-						JOptionPane.showMessageDialog(null,stt+ "★ 비겼습니다");
-						isFinished = true;
-						dispose();
-					}
+					stt += "Player Win Rate : "+pRate+"\n";
+					stt += "Computer Win Rate : "+cRate+"\n";
+					stt += "Player Bingo : "+ countUserBoardBingo+"\n";
+					stt += "Computer Bingo : "+ countComBoardBingo+"\n";
+					new ComBoardDialog(GameDialog.this, "ComBoard",false);
+					JOptionPane.showMessageDialog(null,stt+ "★ 비겼습니다");
+					isFinished = true;
+					dispose();
 				}
 			}
 		}
 	}
-	
-	
 }
+
+/******************************************
+- written by Jinhuyk. Mun 12/06/2022
+- JAVA programming Personal Project
+*******************************************/
